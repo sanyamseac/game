@@ -1,0 +1,345 @@
+<script lang="ts">
+	import { enhance } from '$app/forms'
+	import { invalidate } from '$app/navigation'
+	import { onMount, onDestroy } from 'svelte'
+
+	let { data, form } = $props()
+
+	let refreshInterval: ReturnType<typeof setInterval>
+
+	onMount(() => {
+		// Auto-refresh every 2 seconds
+		refreshInterval = setInterval(() => {
+			invalidate('app:admin-data')
+		}, 2000)
+	})
+
+	onDestroy(() => {
+		if (refreshInterval) {
+			clearInterval(refreshInterval)
+		}
+	})
+
+	let isProcessing = $state(false)
+</script>
+
+<svelte:head>
+	<title>Admin Panel - Quantum Cat Game</title>
+</svelte:head>
+
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
+	<!-- Navigation Bar -->
+	<nav class="border-b border-cyan-500/20 bg-black/20 backdrop-blur-sm">
+		<div class="container mx-auto flex items-center justify-between px-4 py-4">
+			<div class="flex items-center gap-4">
+				<a href="/" class="text-cyan-400 transition-colors hover:text-cyan-300">
+					🏠 Home
+				</a>
+				<span class="text-gray-500">|</span>
+				<span class="text-gray-300">Admin Panel</span>
+			</div>
+			<div class="flex items-center gap-4">
+				<a
+					href="/game/{data.currentLevel}"
+					class="rounded bg-blue-700 px-3 py-1 text-sm transition-colors hover:bg-blue-600"
+				>
+					🎮 View Game
+				</a>
+				<a
+					href="/display"
+					class="rounded bg-green-700 px-3 py-1 text-sm transition-colors hover:bg-green-600"
+				>
+					📊 Display Board
+				</a>
+			</div>
+		</div>
+	</nav>
+
+	<div class="container mx-auto px-4 py-8">
+		<!-- Header -->
+		<div class="mb-8 text-center">
+			<h1
+				class="mb-2 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-4xl font-bold text-transparent"
+			>
+				🔧 Admin Control Panel
+			</h1>
+			<p class="text-xl text-gray-300">Level {data.currentLevel} Management</p>
+		</div>
+
+		<!-- Status Messages -->
+		{#if form?.message}
+			<div
+				class="mb-6 rounded-lg p-4 {form.success
+					? 'border border-green-500 bg-green-900/50 text-green-200'
+					: 'border border-red-500 bg-red-900/50 text-red-200'}"
+			>
+				<div class="flex items-center justify-center gap-2">
+					<span class="text-xl">{form.success ? '✅' : '❌'}</span>
+					<span>{form.message}</span>
+				</div>
+				{#if form.correctAnswer}
+					<div class="mt-2 text-center text-sm">
+						Correct Answer: <strong>{form.correctAnswer}</strong> | 
+						Eliminated: <strong>{form.eliminatedCount}</strong> players
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Game Overview -->
+		<div class="mb-8 grid gap-6 md:grid-cols-3">
+			<!-- Current Level Status -->
+			<div class="rounded-lg border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-sm">
+				<h3 class="mb-4 text-lg font-bold text-cyan-400">📊 Level Status</h3>
+				<div class="space-y-2 text-sm">
+					<div class="flex justify-between">
+						<span>Current Level:</span>
+						<span class="font-bold text-cyan-400">{data.currentLevel}</span>
+					</div>
+					<div class="flex justify-between">
+						<span>Voting:</span>
+						<span class="font-bold {data.levelData?.allowAns ? 'text-green-400' : 'text-red-400'}">
+							{data.levelData?.allowAns ? 'Open' : 'Closed'}
+						</span>
+					</div>
+					<div class="flex justify-between">
+						<span>Results:</span>
+						<span class="font-bold {data.levelData?.resultsRevealed ? 'text-blue-400' : 'text-yellow-400'}">
+							{data.levelData?.resultsRevealed ? 'Revealed' : 'Pending'}
+						</span>
+					</div>
+					{#if data.levelData?.correct}
+						<div class="flex justify-between border-t border-gray-600 pt-2">
+							<span>Correct Answer:</span>
+							<span class="font-bold text-purple-400">{data.levelData.correct}</span>
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<!-- Vote Statistics -->
+			<div class="rounded-lg border border-green-500/20 bg-black/20 p-6 backdrop-blur-sm">
+				<h3 class="mb-4 text-lg font-bold text-green-400">🗳️ Vote Statistics</h3>
+				<div class="space-y-3">
+					<div class="flex justify-between text-sm">
+						<span>Total Votes:</span>
+						<span class="font-bold text-white">{data.voteStats.total}</span>
+					</div>
+					<div class="space-y-2">
+						<div class="flex justify-between text-sm">
+							<span class="flex items-center gap-1">
+								🐱 Alive:
+							</span>
+							<span class="font-bold text-green-400">
+								{data.voteStats.alive} ({data.voteStats.total > 0 ? Math.round((data.voteStats.alive / data.voteStats.total) * 100) : 0}%)
+							</span>
+						</div>
+						<div class="flex justify-between text-sm">
+							<span class="flex items-center gap-1">
+								💀 Dead:
+							</span>
+							<span class="font-bold text-red-400">
+								{data.voteStats.dead} ({data.voteStats.total > 0 ? Math.round((data.voteStats.dead / data.voteStats.total) * 100) : 0}%)
+							</span>
+						</div>
+					</div>
+					<div class="w-full bg-gray-700 rounded-full h-3">
+						<div 
+							class="bg-green-500 h-3 rounded-full transition-all duration-300" 
+							style="width: {data.voteStats.total > 0 ? (data.voteStats.alive / data.voteStats.total) * 100 : 0}%"
+						></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Player Statistics -->
+			<div class="rounded-lg border border-purple-500/20 bg-black/20 p-6 backdrop-blur-sm">
+				<h3 class="mb-4 text-lg font-bold text-purple-400">👥 Player Statistics</h3>
+				<div class="space-y-2 text-sm">
+					<div class="flex justify-between">
+						<span>Active Players:</span>
+						<span class="font-bold text-green-400">{data.activeUsersCount}</span>
+					</div>
+					<div class="flex justify-between">
+						<span>Voted This Round:</span>
+						<span class="font-bold text-blue-400">{data.voteStats.total}</span>
+					</div>
+					<div class="flex justify-between">
+						<span>Pending Votes:</span>
+						<span class="font-bold text-yellow-400">{data.activeUsersCount - data.voteStats.total}</span>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Admin Controls -->
+		<div class="mb-8">
+			<h3 class="mb-4 text-xl font-bold text-cyan-400">🎛️ Game Controls</h3>
+			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+				<!-- End Voting -->
+				<form
+					method="POST"
+					action="?/endVoting"
+					use:enhance={() => {
+						isProcessing = true
+						return async ({ result }) => {
+							isProcessing = false
+							if (result.type === 'success') {
+								invalidate('app:admin-data')
+							}
+						}
+					}}
+				>
+					<button
+						type="submit"
+						disabled={isProcessing || data.levelData?.votingEnded}
+						class="w-full rounded-lg bg-orange-600 px-4 py-3 text-sm font-bold transition-all duration-300 hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						🛑 End Voting
+					</button>
+				</form>
+
+				<!-- Reveal Results -->
+				<form
+					method="POST"
+					action="?/revealResults"
+					use:enhance={() => {
+						isProcessing = true
+						return async ({ result }) => {
+							isProcessing = false
+							if (result.type === 'success') {
+								invalidate('app:admin-data')
+							}
+						}
+					}}
+				>
+					<button
+						type="submit"
+						disabled={isProcessing || !data.levelData?.votingEnded || data.levelData?.resultsRevealed}
+						class="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold transition-all duration-300 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						🎲 Reveal Results
+					</button>
+				</form>
+
+				<!-- Next Level -->
+				<form
+					method="POST"
+					action="?/nextLevel"
+					use:enhance={() => {
+						isProcessing = true
+						return async ({ result }) => {
+							isProcessing = false
+							if (result.type === 'success') {
+								invalidate('app:admin-data')
+							}
+						}
+					}}
+				>
+					<button
+						type="submit"
+						disabled={isProcessing || !data.levelData?.resultsRevealed}
+						class="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-bold transition-all duration-300 hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						⬆️ Next Level
+					</button>
+				</form>
+
+				<!-- Reset Game -->
+				<form
+					method="POST"
+					action="?/resetGame"
+					use:enhance={() => {
+						isProcessing = true
+						return async ({ result }) => {
+							isProcessing = false
+							if (result.type === 'success') {
+								invalidate('app:admin-data')
+							}
+						}
+					}}
+				>
+					<button
+						type="submit"
+						disabled={isProcessing}
+						class="w-full rounded-lg bg-red-600 px-4 py-3 text-sm font-bold transition-all duration-300 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+						onclick={(e) => {
+							if (!confirm('Are you sure you want to reset the entire game? This will bring back all eliminated players.')) {
+								e.preventDefault()
+							}
+						}}
+					>
+						🔄 Reset Game
+					</button>
+				</form>
+			</div>
+		</div>
+
+		<!-- Vote Details -->
+		<div class="rounded-lg border border-gray-500/20 bg-black/20 p-6 backdrop-blur-sm">
+			<h3 class="mb-4 text-xl font-bold text-gray-300">📋 Vote Details - Level {data.currentLevel}</h3>
+			{#if data.votes.length > 0}
+				<div class="overflow-x-auto">
+					<table class="w-full text-sm">
+						<thead>
+							<tr class="border-b border-gray-600">
+								<th class="pb-2 text-left">Player</th>
+								<th class="pb-2 text-left">Email</th>
+								<th class="pb-2 text-left">Vote</th>
+								<th class="pb-2 text-left">Time</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each data.votes as vote}
+								<tr class="border-b border-gray-700/50">
+									<td class="py-2">{vote.userName}</td>
+									<td class="py-2 text-gray-400">{vote.userEmail}</td>
+									<td class="py-2">
+										<span class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs {vote.answer === 'alive' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}">
+											{vote.answer === 'alive' ? '🐱' : '💀'}
+											{vote.answer}
+										</span>
+									</td>
+									<td class="py-2 text-gray-400">
+										{new Date(vote.timestamp).toLocaleTimeString()}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<div class="py-8 text-center text-gray-400">
+					No votes recorded for this level yet.
+				</div>
+			{/if}
+		</div>
+	</div>
+</div>
+
+<style>
+	/* Loading animation for buttons */
+	button:disabled {
+		position: relative;
+	}
+	
+	button:disabled::after {
+		content: '';
+		position: absolute;
+		width: 16px;
+		height: 16px;
+		margin: auto;
+		border: 2px solid transparent;
+		border-top-color: #ffffff;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+	
+	@keyframes spin {
+		0% { transform: translate(-50%, -50%) rotate(0deg); }
+		100% { transform: translate(-50%, -50%) rotate(360deg); }
+	}
+</style>
