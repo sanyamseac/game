@@ -364,7 +364,7 @@
 	<!-- Footer -->
 	<div class="relative z-10 text-center py-4 border-t border-cyan-500/20">
 		<div class="text-sm text-gray-400">
-			Last updated: {new Date().toLocaleTimeString()} | Auto-refresh every 0.5s
+			Last updated: {new Date().toLocaleTimeString()} | Auto-refresh every 0.2s
 		</div>
 	</div>
 </div>

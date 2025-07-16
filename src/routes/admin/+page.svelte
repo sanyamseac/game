@@ -21,6 +21,7 @@
 	})
 
 	let isProcessing = $state(false)
+	let autoStartTimer = $state(false)
 
 	let endRef: HTMLFormElement
 </script>
@@ -306,6 +307,27 @@
 							isProcessing = false
 							if (result.type === 'success') {
 								invalidate('app:admin-data')
+								// Auto-start timer if toggle is enabled
+								if (autoStartTimer) {
+									setTimeout(async () => {
+										try {
+											const formData = new FormData()
+											const response = await fetch('/admin?/startTimer', {
+												method: 'POST',
+												body: formData
+											})
+											if (response.ok) {
+												invalidate('app:admin-data')
+												// Auto-end voting after timer duration
+												setTimeout(() => {
+													endRef.requestSubmit()
+												}, (data.levelData?.timerDuration || 10) * 1000)
+											}
+										} catch (error) {
+											console.error('Failed to auto-start timer:', error)
+										}
+									}, 500) // Small delay to ensure level transition is complete
+								}
 							}
 						}
 					}}
@@ -351,6 +373,25 @@
 			<!-- Timer Controls -->
 			<div class="mb-6 rounded-lg border border-blue-500/20 bg-blue-900/20 p-6 backdrop-blur-sm">
 				<h4 class="mb-4 text-lg font-bold text-blue-400">⏱️ Timer Controls</h4>
+				
+				<!-- Auto Start Timer Toggle -->
+				<div class="mb-4 rounded-lg border border-purple-500/30 bg-purple-900/20 p-4">
+					<label class="flex items-center gap-3 cursor-pointer">
+						<input 
+							type="checkbox" 
+							bind:checked={autoStartTimer}
+							class="w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+						>
+						<div class="flex items-center gap-2">
+							<span class="text-sm font-medium text-purple-300">🚀 Auto-start timer on Next Level</span>
+							<span class="text-xs text-purple-400">({data.levelData?.timerDuration || 10}s)</span>
+						</div>
+					</label>
+					<p class="text-xs text-purple-400 mt-1 ml-7">
+						When enabled, timer will automatically start when advancing to next level
+					</p>
+				</div>
+
 				<div class="grid gap-4 md:grid-cols-3">
 					<!-- Start Timer -->
 					<form

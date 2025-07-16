@@ -33,6 +33,9 @@ export const load: PageServerLoad = async (event) => {
 		return redirect(302, '/eliminated')
 	}
 
+	if (event.locals.user.level !== level) {
+		return error(403, { message: 'You are not allowed to access this level' })
+	}
 	// Check if user already voted
 	const [existingVote] = await db
 		.select()

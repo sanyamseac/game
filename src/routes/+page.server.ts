@@ -22,6 +22,6 @@ export const load = async (event) => {
 		allowRegistration: gameDetails.allowReg,
 		gameStarted: gameDetails.gameStarted,
 		needsInitialization: false,
-        userrole: user.role
+        userrole: user ? user.role : null
 	}
 }

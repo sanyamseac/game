@@ -61,7 +61,7 @@
 			{/if}
 
 			<!-- Display Link -->
-			{#if data.userrole === 'admin'	}
+			{#if data.userrole && data.userrole === 'admin'}
 				<a href="/display" class="group block">
 					<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-blue-500/20 p-8 transition-all duration-300 hover:scale-105 hover:border-blue-400/40">
 						<div class="text-center">
