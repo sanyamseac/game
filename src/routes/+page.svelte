@@ -11,53 +11,82 @@
 		<!-- Header -->
 		<div class="text-center mb-12">
 			<h1 class="text-6xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-4">
-				⚛️ Quantum Cat Game
+				⚛️ ISAQC Quantum Cat Challenge
 			</h1>
-			<p class="text-xl text-gray-300 mb-8">
+			<p class="text-xl text-gray-300 mb-2">
+				IIIT Society for Applied Quantum Computing
+			</p>
+			<p class="text-lg text-gray-400 mb-8">
 				A social elimination game based on Schrödinger's Cat paradox
 			</p>
 		</div>
 
 		<!-- Navigation Cards -->
-		<div class="grid gap-8 md:grid-cols-3 max-w-4xl mx-auto">
+		<div class="grid gap-8 max-w-4xl mx-auto">
 			<!-- Game Link -->
-			<a href="/game/1" class="group block">
-				<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-green-500/20 p-8 transition-all duration-300 hover:scale-105 hover:border-green-400/40">
+			{#if data.allowRegistration}
+				<a href="/game" class="group block">
+					<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-green-500/20 p-8 transition-all duration-300 hover:scale-105 hover:border-green-400/40">
+						<div class="text-center">
+							<div class="text-6xl mb-4">🎮</div>
+							<h2 class="text-2xl font-bold text-green-400 mb-2">Join Game</h2>
+							<p class="text-gray-300 text-sm mb-2">
+								{data.gameStarted ? `Join Level ${data.currentLevel} - Everyone plays together!` : 'Join the quantum lobby - Waiting for game to start'}
+							</p>
+							<div class="text-xs text-green-300 mb-2">
+								{data.gameStarted ? '🔴 LIVE TOURNAMENT' : '🟡 PRE-GAME LOBBY'} - All players in one room
+							</div>
+							<div class="text-xs text-gray-400">
+								Click to enter the quantum chamber
+							</div>
+						</div>
+					</div>
+				</a>
+			{:else}
+				<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-red-500/20 p-8">
 					<div class="text-center">
-						<div class="text-6xl mb-4">🎮</div>
-						<h2 class="text-2xl font-bold text-green-400 mb-2">Play Game</h2>
-						<p class="text-gray-300 text-sm">
-							Join the quantum tournament and vote on the cat's fate
+						<div class="text-6xl mb-4">🔒</div>
+						<h2 class="text-2xl font-bold text-red-400 mb-2">Registration Closed</h2>
+						<p class="text-gray-300 text-sm mb-2">
+							The quantum tournament has started. New players cannot join.
 						</p>
+						<div class="text-xs text-red-300 mb-2">
+							🚫 GAME IN PROGRESS
+						</div>
+						<div class="text-xs text-gray-400">
+							Contact admin to reset if needed
+						</div>
 					</div>
 				</div>
-			</a>
+			{/if}
 
 			<!-- Display Link -->
-			<a href="/display" class="group block">
-				<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-blue-500/20 p-8 transition-all duration-300 hover:scale-105 hover:border-blue-400/40">
-					<div class="text-center">
-						<div class="text-6xl mb-4">📊</div>
-						<h2 class="text-2xl font-bold text-blue-400 mb-2">Live Display</h2>
-						<p class="text-gray-300 text-sm">
-							Watch the tournament live with real-time vote tracking
-						</p>
+			{#if data.userrole === 'admin'	}
+				<a href="/display" class="group block">
+					<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-blue-500/20 p-8 transition-all duration-300 hover:scale-105 hover:border-blue-400/40">
+						<div class="text-center">
+							<div class="text-6xl mb-4">📊</div>
+							<h2 class="text-2xl font-bold text-blue-400 mb-2">Live Display</h2>
+							<p class="text-gray-300 text-sm">
+								Watch the tournament live with real-time vote tracking
+							</p>
+						</div>
 					</div>
-				</div>
-			</a>
+				</a>
 
-			<!-- Admin Link -->
-			<a href="/admin" class="group block">
-				<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-purple-500/20 p-8 transition-all duration-300 hover:scale-105 hover:border-purple-400/40">
-					<div class="text-center">
-						<div class="text-6xl mb-4">🔧</div>
-						<h2 class="text-2xl font-bold text-purple-400 mb-2">Admin Panel</h2>
-						<p class="text-gray-300 text-sm">
-							Control the game flow and manage tournament rounds
-						</p>
+
+				<a href="/admin" class="group block">
+					<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-purple-500/20 p-8 transition-all duration-300 hover:scale-105 hover:border-purple-400/40">
+						<div class="text-center">
+							<div class="text-6xl mb-4">🔧</div>
+							<h2 class="text-2xl font-bold text-purple-400 mb-2">Admin Panel</h2>
+							<p class="text-gray-300 text-sm">
+								Control the game flow and manage tournament rounds
+							</p>
+						</div>
 					</div>
-				</div>
-			</a>
+				</a>
+			{/if}
 		</div>
 
 		<!-- Game Rules -->
@@ -99,13 +128,6 @@
 					</div>
 				</div>
 			</div>
-		</div>
-
-		<!-- Login Link -->
-		<div class="text-center mt-12">
-			<a href="/login" class="inline-block bg-gradient-to-r from-cyan-600 to-purple-600 px-8 py-3 rounded-lg font-bold transition-all duration-300 hover:scale-105">
-				🚀 Start Playing
-			</a>
 		</div>
 	</div>
 </div>

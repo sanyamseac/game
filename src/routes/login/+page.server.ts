@@ -10,7 +10,23 @@ export const load: PageServerLoad = async (event) => {
 	if (event.locals.user) {
 		return redirect(302, '/game')
 	}
-	return {}
+
+	// Check if registration is allowed
+	const gameDetailsResult = await db.select().from(table.details)
+	const gameDetails = gameDetailsResult[0]
+	
+	// If no game details exist, return default values
+	if (!gameDetails) {
+		return {
+			allowRegistration: false,
+			needsInitialization: true
+		}
+	}
+	
+	return {
+		allowRegistration: gameDetails.allowReg,
+		needsInitialization: false
+	}
 }
 
 export const actions: Actions = {
@@ -43,6 +59,6 @@ export const actions: Actions = {
 			session: store,
 		})
 
-		return redirect(302, '/game/1')
+		return { success: true }
 	},
 }

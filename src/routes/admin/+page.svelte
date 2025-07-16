@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms'
-	import { invalidate } from '$app/navigation'
+	import { invalidate, invalidateAll } from '$app/navigation'
 	import { onMount, onDestroy } from 'svelte'
 
 	let { data, form } = $props()
@@ -10,8 +10,8 @@
 	onMount(() => {
 		// Auto-refresh every 2 seconds
 		refreshInterval = setInterval(() => {
-			invalidate('app:admin-data')
-		}, 2000)
+			invalidateAll()
+		}, 300)
 	})
 
 	onDestroy(() => {
@@ -21,6 +21,8 @@
 	})
 
 	let isProcessing = $state(false)
+
+	let endRef: HTMLFormElement
 </script>
 
 <svelte:head>
@@ -61,9 +63,12 @@
 			<h1
 				class="mb-2 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-4xl font-bold text-transparent"
 			>
-				🔧 Admin Control Panel
+				🔧 ISAQC Admin Control Panel
 			</h1>
 			<p class="text-xl text-gray-300">Level {data.currentLevel} Management</p>
+			<div class="mt-2 text-sm text-purple-300">
+				IIIT Society for Applied Quantum Computing
+			</div>
 		</div>
 
 		<!-- Status Messages -->
@@ -175,9 +180,78 @@
 		<!-- Admin Controls -->
 		<div class="mb-8">
 			<h3 class="mb-4 text-xl font-bold text-cyan-400">🎛️ Game Controls</h3>
+			
+			<!-- Registration and Game Start Controls -->
+			<div class="mb-6 rounded-lg border border-yellow-500/20 bg-yellow-900/20 p-6 backdrop-blur-sm">
+				<h4 class="mb-4 text-lg font-bold text-yellow-400">🚀 Game Flow Controls</h4>
+				<div class="grid gap-4 md:grid-cols-3">
+					<!-- Registration Control -->
+					<form
+						method="POST"
+						action="?/toggleRegistration"
+						use:enhance={() => {
+							isProcessing = true
+							return async ({ result }) => {
+								isProcessing = false
+								if (result.type === 'success') {
+									invalidate('app:admin-data')
+								}
+							}
+						}}
+					>
+						<button
+							type="submit"
+							disabled={isProcessing}
+							class="w-full rounded-lg px-4 py-3 text-sm font-bold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 {data.gameDetails.allowReg ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'}"
+						>
+							{data.gameDetails.allowReg ? '🚫 Stop Registration' : '✅ Allow Registration'}
+						</button>
+					</form>
+
+					<!-- Game Start Control -->
+					<form
+						method="POST"
+						action="?/startGame"
+						use:enhance={() => {
+							isProcessing = true
+							return async ({ result }) => {
+								isProcessing = false
+								if (result.type === 'success') {
+									invalidate('app:admin-data')
+								}
+							}
+						}}
+					>
+						<button
+							type="submit"
+							disabled={isProcessing || data.gameDetails.gameStarted}
+							class="w-full rounded-lg bg-purple-600 px-4 py-3 text-sm font-bold transition-all duration-300 hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+							onclick={(e) => {
+								if (!confirm('Are you sure you want to start the game? This will begin Level 1 and players can start voting.')) {
+									e.preventDefault()
+								}
+							}}
+						>
+							🎮 Start Game
+						</button>
+					</form>
+
+					<!-- Status Indicator -->
+					<div class="flex items-center justify-center rounded-lg border-2 px-4 py-3 text-sm font-bold {data.gameDetails.gameStarted ? 'border-green-500 bg-green-900/50 text-green-300' : 'border-yellow-500 bg-yellow-900/50 text-yellow-300'}">
+						{#if data.gameDetails.gameStarted}
+							🟢 Game Active
+						{:else}
+							🟡 Pre-Game Lobby
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<!-- Level Controls -->
 			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<!-- End Voting -->
 				<form
+					bind:this = {endRef}
 					method="POST"
 					action="?/endVoting"
 					use:enhance={() => {
@@ -273,10 +347,74 @@
 					</button>
 				</form>
 			</div>
+
+			<!-- Timer Controls -->
+			<div class="mb-6 rounded-lg border border-blue-500/20 bg-blue-900/20 p-6 backdrop-blur-sm">
+				<h4 class="mb-4 text-lg font-bold text-blue-400">⏱️ Timer Controls</h4>
+				<div class="grid gap-4 md:grid-cols-3">
+					<!-- Start Timer -->
+					<form
+						method="POST"
+						action="?/startTimer"
+						use:enhance={() => {
+							setTimeout(() => {
+									endRef.requestSubmit()
+							}, 10000)
+							isProcessing = true
+							return async ({ result }) => {
+								isProcessing = false
+								if (result.type === 'success') {
+									invalidate('app:admin-data')
+								}
+							}
+						}}
+					>
+						<button
+							type="submit"
+							disabled={isProcessing || data.levelData?.timerActive || data.levelData?.votingEnded}
+							class="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-bold transition-all duration-300 hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							▶️ Start Timer
+						</button>
+					</form>
+
+					<!-- Stop Timer -->
+					<form
+						method="POST"
+						action="?/stopTimer"
+						use:enhance={() => {
+							isProcessing = true
+							return async ({ result }) => {
+								isProcessing = false
+								if (result.type === 'success') {
+									invalidate('app:admin-data')
+								}
+							}
+						}}
+					>
+						<button
+							type="submit"
+							disabled={isProcessing || !data.levelData?.timerActive}
+							class="w-full rounded-lg bg-red-600 px-4 py-3 text-sm font-bold transition-all duration-300 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							⏹️ Stop Timer
+						</button>
+					</form>
+
+					<!-- Timer Status -->
+					<div class="flex items-center justify-center rounded-lg border-2 px-4 py-3 text-sm font-bold {data.levelData?.timerActive ? 'border-green-500 bg-green-900/50 text-green-300' : 'border-gray-500 bg-gray-900/50 text-gray-300'}">
+						{#if data.levelData?.timerActive}
+							⏱️ Timer Active
+						{:else}
+							⏸️ Timer Inactive
+						{/if}
+					</div>
+				</div>
+			</div>
 		</div>
 
 		<!-- Vote Details -->
-		<div class="rounded-lg border border-gray-500/20 bg-black/20 p-6 backdrop-blur-sm">
+		<div class="rounded-lg border border-gray-500/20 bg-black/20 p-6 backdrop-blur-sm mb-8">
 			<h3 class="mb-4 text-xl font-bold text-gray-300">📋 Vote Details - Level {data.currentLevel}</h3>
 			{#if data.votes.length > 0}
 				<div class="overflow-x-auto">
@@ -311,6 +449,42 @@
 			{:else}
 				<div class="py-8 text-center text-gray-400">
 					No votes recorded for this level yet.
+				</div>
+			{/if}
+		</div>
+
+		<!-- Eliminated Players -->
+		<div class="rounded-lg border border-red-500/20 bg-black/20 p-6 backdrop-blur-sm">
+			<h3 class="mb-4 text-xl font-bold text-red-300">💀 Eliminated Players ({data.eliminatedCount})</h3>
+			{#if data.eliminatedPlayers && data.eliminatedPlayers.length > 0}
+				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+					{#each data.eliminatedPlayers as player}
+						<div class="rounded-lg border border-red-600/30 bg-red-900/20 p-4">
+							<div class="flex items-center gap-3">
+								<div class="text-2xl">👻</div>
+								<div class="flex-1">
+									<div class="font-medium text-red-200">{player.name}</div>
+									<div class="text-xs text-red-400">{player.email}</div>
+									<div class="text-xs text-gray-500 mt-1">
+										Eliminated at Level {player.level}
+									</div>
+								</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+				<div class="mt-4 p-3 rounded-lg bg-red-900/30 border border-red-600/30">
+					<div class="flex items-center justify-center gap-2 text-sm text-red-300">
+						<span>⚰️</span>
+						<span>These players' quantum states have collapsed and can no longer participate</span>
+						<span>🌌</span>
+					</div>
+				</div>
+			{:else}
+				<div class="py-8 text-center text-gray-400">
+					<div class="text-4xl mb-2">🎉</div>
+					<p>No players eliminated yet!</p>
+					<p class="text-sm mt-1">All participants are still in the quantum superposition.</p>
 				</div>
 			{/if}
 		</div>

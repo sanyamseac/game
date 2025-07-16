@@ -7,12 +7,18 @@
 	let refreshInterval: ReturnType<typeof setInterval>
 	let quantumParticles: Array<{ x: number; y: number; vx: number; vy: number; opacity: number }> = []
 	let animationId: number
+	let timerDisplayInterval: ReturnType<typeof setInterval>
 
 	onMount(() => {
 		// Auto-refresh every 500ms for live updates
 		refreshInterval = setInterval(() => {
 			invalidate('app:display-data')
-		}, 500)
+		}, 200)
+
+		// Update timer display every second
+		timerDisplayInterval = setInterval(() => {
+			updateTimerDisplay()
+		}, 1000)
 
 		// Initialize quantum particles
 		for (let i = 0; i < 50; i++) {
@@ -34,7 +40,27 @@
 		if (animationId) {
 			cancelAnimationFrame(animationId)
 		}
+		if (timerDisplayInterval) {
+			clearInterval(timerDisplayInterval)
+		}
 	})
+
+	function updateTimerDisplay() {
+		if (data.levelData?.timerActive && data.levelData?.timerEndTime) {
+			const timeLeft = Math.max(0, data.levelData.timerEndTime - Math.floor(Date.now() / 1000))
+			const timerElement = document.getElementById('timer-display')
+			if (timerElement) {
+				timerElement.textContent = timeLeft.toString()
+				
+				// Add animation when time is running low
+				if (timeLeft <= 5 && timeLeft > 0) {
+					timerElement.classList.add('animate-pulse')
+				} else {
+					timerElement.classList.remove('animate-pulse')
+				}
+			}
+		}
+	}
 
 	function animateParticles() {
 		quantumParticles = quantumParticles.map((particle) => ({
@@ -70,11 +96,14 @@
 	<!-- Header -->
 	<div class="relative z-10 text-center py-8">
 		<h1 class="text-6xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-4">
-			⚛️ QUANTUM CAT GAME
+			⚛️ ISAQC QUANTUM CHALLENGE
 		</h1>
 		<div class="text-2xl text-gray-300 mb-2">Live Tournament Display</div>
 		<div class="text-lg text-cyan-400">
 			Level <span class="font-bold text-3xl">{data.currentLevel}</span>
+		</div>
+		<div class="mt-2 text-sm text-purple-300">
+			IIIT Society for Applied Quantum Computing
 		</div>
 	</div>
 
@@ -84,6 +113,29 @@
 			
 			<!-- Left Column: Game Status -->
 			<div class="space-y-6">
+				<!-- Timer Display -->
+				{#if data.levelData?.timerActive}
+					<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-red-500/50 p-6">
+						<h2 class="text-2xl font-bold text-red-400 mb-4 flex items-center gap-2">
+							⏰ Voting Timer
+						</h2>
+						<div class="text-center">
+							<div class="text-6xl font-mono text-red-300 mb-2" id="timer-display">
+								{Math.max(0, Math.floor((data.levelData.timerEndTime - Math.floor(Date.now() / 1000))))}
+							</div>
+							<div class="text-lg text-red-200">
+								seconds remaining
+							</div>
+							<div class="mt-4 w-full bg-gray-700 rounded-full h-3">
+								<div 
+									class="bg-red-500 h-3 rounded-full transition-all duration-1000" 
+									style="width: {Math.max(0, Math.min(100, ((data.levelData.timerEndTime - Math.floor(Date.now() / 1000)) / data.levelData.timerDuration) * 100))}%"
+								></div>
+							</div>
+						</div>
+					</div>
+				{/if}
+
 				<!-- Current Status -->
 				<div class="bg-black/30 backdrop-blur-sm rounded-xl border border-cyan-500/20 p-6">
 					<h2 class="text-2xl font-bold text-cyan-400 mb-4 flex items-center gap-2">

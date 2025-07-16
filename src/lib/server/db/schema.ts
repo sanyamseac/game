@@ -18,6 +18,9 @@ export const levels = sqliteTable('levels', {
 	allowAns: integer('allow_ans', { mode: 'boolean' }).notNull().default(true),
 	votingEnded: integer('voting_ended', { mode: 'boolean' }).notNull().default(false),
 	resultsRevealed: integer('results_revealed', { mode: 'boolean' }).notNull().default(false),
+	timerActive: integer('timer_active', { mode: 'boolean' }).notNull().default(false),
+	timerEndTime: integer('timer_end_time'), // Unix timestamp when timer ends
+	timerDuration: integer('timer_duration').notNull().default(10), // Timer duration in seconds
 })
 
 export const votes = sqliteTable('votes', {

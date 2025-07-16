@@ -59,11 +59,31 @@ export const load: PageServerLoad = async (event) => {
 		.where(eq(table.votes.level, currentLevel))
 		.orderBy(table.votes.timestamp)
 
+	// Get eliminated players
+	const eliminatedPlayers = await db
+		.select({
+			id: table.user.id,
+			name: table.user.name,
+			email: table.user.email,
+			level: table.user.level
+		})
+		.from(table.user)
+		.where(eq(table.user.isActive, false))
+		.orderBy(table.user.name)
+
+	// Get eliminated count
+	const [eliminatedCount] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(table.user)
+		.where(eq(table.user.isActive, false))
+
 	return {
 		gameDetails,
 		levelData,
 		voteStats: { alive, dead, total: alive + dead },
 		activeUsersCount: activeUsersCount.count,
+		eliminatedCount: eliminatedCount.count,
+		eliminatedPlayers,
 		votes,
 		currentLevel
 	}
@@ -152,7 +172,10 @@ export const actions: Actions = {
 				correct: null,
 				allowAns: true,
 				votingEnded: false,
-				resultsRevealed: false
+				resultsRevealed: false,
+				timerActive: false,
+				timerEndTime: null,
+				timerDuration: 10
 			})
 		} else {
 			// Reset level state
@@ -162,7 +185,10 @@ export const actions: Actions = {
 					correct: null,
 					allowAns: true,
 					votingEnded: false,
-					resultsRevealed: false
+					resultsRevealed: false,
+					timerActive: false,
+					timerEndTime: null,
+					timerDuration: 10
 				})
 				.where(eq(table.levels.level, nextLevel))
 		}
@@ -195,12 +221,12 @@ export const actions: Actions = {
 		// Clear all votes
 		await db.delete(table.votes)
 
-		// Reset to level 1
+		// Reset to pre-game state (game not started)
 		await db
 			.update(table.details)
 			.set({ 
 				currentLevel: 1,
-				gameStarted: true 
+				gameStarted: false  // This should be false to fully reset
 			})
 
 		// Reset level 1
@@ -208,15 +234,147 @@ export const actions: Actions = {
 			.update(table.levels)
 			.set({
 				correct: null,
-				allowAns: true,
+				allowAns: false,  // Should be false until game starts
 				votingEnded: false,
-				resultsRevealed: false
+				resultsRevealed: false,
+				timerActive: false,
+				timerEndTime: null,
+				timerDuration: 10
 			})
 			.where(eq(table.levels.level, 1))
 
 		return { 
 			success: true, 
-			message: 'Game reset successfully. All players are back in the game!'
+			message: 'Game reset successfully. All players are back in the lobby!'
+		}
+	},
+
+	toggleRegistration: async (event) => {
+		if (!event.locals.user) return fail(401, { message: 'Unauthorized' })
+		if (event.locals.user.role !== 'admin') return fail(403, { message: 'Forbidden' })
+
+		const [gameDetails] = await db.select().from(table.details)
+		const newAllowReg = !gameDetails.allowReg
+
+		await db
+			.update(table.details)
+			.set({ allowReg: newAllowReg })
+
+		return { 
+			success: true, 
+			message: newAllowReg ? 'Registration is now open' : 'Registration has been stopped'
+		}
+	},
+
+	startGame: async (event) => {
+		if (!event.locals.user) return fail(401, { message: 'Unauthorized' })
+		if (event.locals.user.role !== 'admin') return fail(403, { message: 'Forbidden' })
+
+		const [gameDetails] = await db.select().from(table.details)
+		
+		if (gameDetails.gameStarted) {
+			return fail(400, { message: 'Game has already started' })
+		}
+
+		// Start the game and enable voting for level 1
+		await db
+			.update(table.details)
+			.set({ 
+				gameStarted: true,
+				currentLevel: 1
+			})
+
+		// Ensure level 1 exists and is ready for voting
+		const [level1] = await db
+			.select()
+			.from(table.levels)
+			.where(eq(table.levels.level, 1))
+
+		if (!level1) {
+			await db.insert(table.levels).values({
+				id: generateId(),
+				level: 1,
+				correct: null,
+				allowAns: true,
+				votingEnded: false,
+				resultsRevealed: false,
+				timerActive: false,
+				timerEndTime: null,
+				timerDuration: 10
+			})
+		} else {
+			await db
+				.update(table.levels)
+				.set({
+					allowAns: true,
+					votingEnded: false,
+					resultsRevealed: false,
+					correct: null,
+					timerActive: false,
+					timerEndTime: null,
+					timerDuration: 10
+				})
+				.where(eq(table.levels.level, 1))
+		}
+
+		return { 
+			success: true, 
+			message: 'Game started! Level 1 voting is now open.'
+		}
+	},
+
+	startTimer: async (event) => {
+		if (!event.locals.user) return fail(401, { message: 'Unauthorized' })
+		if (event.locals.user.role !== 'admin') return fail(403, { message: 'Forbidden' })
+
+		const [gameDetails] = await db.select().from(table.details)
+		const currentLevel = gameDetails.currentLevel
+
+		const [levelData] = await db
+			.select()
+			.from(table.levels)
+			.where(eq(table.levels.level, currentLevel))
+
+		if (!levelData || levelData.votingEnded) {
+			return fail(400, { message: 'Cannot start timer - voting has ended' })
+		}
+
+		const timerDuration = 10 // 10 seconds
+		const timerEndTime = Math.floor(Date.now() / 1000) + timerDuration
+
+		await db
+			.update(table.levels)
+			.set({ 
+				timerActive: true,
+				timerEndTime: timerEndTime,
+				timerDuration: timerDuration
+			})
+			.where(eq(table.levels.level, currentLevel))
+
+		return { 
+			success: true, 
+			message: `Timer started for ${timerDuration} seconds!`
+		}
+	},
+
+	stopTimer: async (event) => {
+		if (!event.locals.user) return fail(401, { message: 'Unauthorized' })
+		if (event.locals.user.role !== 'admin') return fail(403, { message: 'Forbidden' })
+
+		const [gameDetails] = await db.select().from(table.details)
+		const currentLevel = gameDetails.currentLevel
+
+		await db
+			.update(table.levels)
+			.set({ 
+				timerActive: false,
+				timerEndTime: null
+			})
+			.where(eq(table.levels.level, currentLevel))
+
+		return { 
+			success: true, 
+			message: 'Timer stopped!'
 		}
 	}
 }

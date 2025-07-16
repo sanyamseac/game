@@ -14,12 +14,17 @@
 	let formRef: HTMLFormElement
 	let gameDataInterval: ReturnType<typeof setInterval>
 	let voteStats = $state({ alive: 0, dead: 0, total: 0 })
+	
+	// Server-side timer display
+	let timeLeft = $state(0)
+	let autoSubmitted = $state(false)
 
 	let level = $derived(parseInt($page.params.level))
 	let hasVoted = $derived(data.hasVoted)
 	let userVote = $derived(data.userVote)
 	let levelData = $derived(data.levelData)
 	let gameDetails = $derived(data.gameDetails)
+	let timerActive = $derived(levelData?.timerActive || false)
 
 	onMount(() => {
 		for (let i = 0; i < 20; i++) {
@@ -35,7 +40,8 @@
 		// Set up auto-refresh for game data
 		gameDataInterval = setInterval(() => {
 			invalidate('app:game-data')
-		}, 2000)
+			updateTimer() // Update timer display
+		}, 1000) // Update every second for timer
 
 		// Set initial state based on data
 		if (hasVoted) {
@@ -48,6 +54,9 @@
 
 		// Fetch vote statistics
 		fetchVoteStats()
+
+		// Initialize timer display
+		updateTimer()
 	})
 
 	onDestroy(() => {
@@ -55,6 +64,31 @@
 			clearInterval(gameDataInterval)
 		}
 	})
+
+	function updateTimer() {
+		if (levelData?.timerActive && levelData?.timerEndTime) {
+			const currentTime = Math.floor(Date.now() / 1000)
+			timeLeft = Math.max(0, levelData.timerEndTime - currentTime)
+			
+			// Auto-submit if timer reaches 0 and user hasn't voted
+			if (timeLeft <= 0 && !hasVoted && !autoSubmitted && levelData?.allowAns && !levelData?.votingEnded) {
+				autoSubmitted = true
+				const randomAnswer = Math.random() < 0.5 ? 'alive' : 'dead'
+				selectedAnswer = randomAnswer
+				showQuantumEffect = true
+				animateParticles()
+				
+				setTimeout(() => {
+					showQuantumEffect = false
+					if (formRef) {
+						formRef.requestSubmit()
+					}
+				}, 100)
+			}
+		} else {
+			timeLeft = 0
+		}
+	}
 
 	async function fetchVoteStats() {
 		try {
@@ -95,7 +129,7 @@
 				} else {
 					console.error('Form ref not found');
 				}
-			}, 2000)
+			}, 100)
 		} else {
 			console.log('Button disabled - isSubmitting:', isSubmitting, 'showQuantumEffect:', showQuantumEffect, 'hasVoted:', hasVoted);
 		}
@@ -133,6 +167,7 @@
 				<div class="text-sm text-gray-400">
 					Current Level: <span class="font-bold text-cyan-400">{level}</span>
 				</div>
+				
 				{#if level > 1}
 					<a
 						href="/game/{level - 1}"
@@ -151,15 +186,40 @@
 			<h1
 				class="mb-2 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-4xl font-bold text-transparent"
 			>
-				Schrödinger's Cat Paradox
+				ISAQC Quantum Cat Challenge
 			</h1>
 			<p class="text-xl text-gray-300">Level {level}</p>
+			
+			<!-- Timer Display -->
+			{#if timerActive && !hasVoted && !levelData?.votingEnded}
+				<div class="mt-4 mb-4">
+					<div class="inline-flex items-center gap-2 rounded-lg px-4 py-2 {timeLeft <= 3 ? 'bg-red-900/70 border-2 border-red-400 animate-pulse' : 'bg-red-900/50 border border-red-500/50'}">
+						<span class="text-red-400 text-lg">⏰</span>
+						<span class="text-white font-bold">Time Left: </span>
+						<span class="font-mono text-xl min-w-[2ch] {timeLeft <= 3 ? 'text-red-200 animate-bounce' : 'text-red-300'}">{timeLeft}</span>
+						<span class="text-gray-400 text-sm">seconds</span>
+					</div>
+					{#if timeLeft <= 5 && timeLeft > 3}
+						<p class="text-orange-400 text-sm mt-2">
+							⚡ Hurry! Quantum state is becoming unstable!
+						</p>
+					{:else if timeLeft <= 3}
+						<p class="text-red-400 text-sm mt-2 animate-pulse font-bold">
+							🚨 CRITICAL: Random answer will be selected in {timeLeft}!
+						</p>
+					{/if}
+				</div>
+			{/if}
+			
 			<div class="mt-4 rounded-lg bg-black/30 p-4 backdrop-blur-sm">
 				<p class="text-sm text-gray-300">
 					In quantum mechanics, a cat in a box can be both alive and dead simultaneously
 					until observed.
 					<br />What is the state of the cat at this level?
 				</p>
+				<div class="mt-2 text-xs text-purple-300">
+					🏛️ IIIT Society for Applied Quantum Computing Challenge
+				</div>
 			</div>
 
 			<!-- Error/Success Messages -->
@@ -461,16 +521,67 @@
 					<h2 class="mb-4 text-2xl font-bold text-cyan-400">Voting Completed</h2>
 					{#if levelData?.resultsRevealed}
 						<div class="rounded-lg border border-cyan-500/20 bg-black/20 p-6 backdrop-blur-sm">
-							<p class="text-lg text-gray-300">
-								The quantum state has been determined: <strong class="text-cyan-400">{levelData.correct}</strong>
-							</p>
+							<div class="mb-4">
+								<div class="text-6xl mb-2">
+									{#if levelData.correct === 'alive'}
+										🐱
+									{:else}
+										💀
+									{/if}
+								</div>
+								<p class="text-lg text-gray-300">
+									The quantum measurement is complete!
+								</p>
+								<p class="text-2xl font-bold text-cyan-400 mt-2">
+									The cat is <span class="text-yellow-300">{levelData.correct?.toUpperCase()}</span>
+								</p>
+							</div>
+							
 							{#if userVote === levelData.correct}
-								<div class="mt-4 text-green-400">
-									🎉 You chose correctly and advance to the next round!
+								<div class="mt-6 p-6 rounded-lg bg-gradient-to-r from-green-900/50 to-emerald-900/50 border border-green-500/50">
+									<div class="text-center">
+										<div class="text-5xl mb-3">🎉</div>
+										<h3 class="text-2xl font-bold text-green-400 mb-2">Quantum Intuition Correct!</h3>
+										<p class="text-green-200 mb-4">
+											Your prediction aligned with the quantum measurement. You advance to the next level!
+										</p>
+										<div class="flex items-center justify-center gap-2 text-sm text-green-300">
+											<span>🧬</span>
+											<span>Quantum state successfully predicted</span>
+											<span>⚛️</span>
+										</div>
+									</div>
 								</div>
 							{:else}
-								<div class="mt-4 text-red-400">
-									💥 You chose incorrectly and have been eliminated.
+								<div class="mt-6 p-6 rounded-lg bg-gradient-to-r from-red-900/50 to-rose-900/50 border border-red-500/50">
+									<div class="text-center">
+										<div class="text-5xl mb-3">💥</div>
+										<h3 class="text-2xl font-bold text-red-400 mb-2">Quantum Decoherence!</h3>
+										<p class="text-red-200 mb-4">
+											Your prediction didn't match the quantum measurement. The wave function has collapsed, 
+											and you've been eliminated from this reality.
+										</p>
+										<div class="grid grid-cols-2 gap-4 mt-4 text-sm">
+											<div class="text-center">
+												<div class="text-gray-400">Your Vote:</div>
+												<div class="font-bold text-red-300">
+													{userVote === 'alive' ? '🐱 ALIVE' : '💀 DEAD'}
+												</div>
+											</div>
+											<div class="text-center">
+												<div class="text-gray-400">Reality:</div>
+												<div class="font-bold text-cyan-300">
+													{levelData.correct === 'alive' ? '🐱 ALIVE' : '💀 DEAD'}
+												</div>
+											</div>
+										</div>
+										<div class="mt-4 pt-4 border-t border-red-500/30">
+											<p class="text-xs text-red-300">
+												⚡ Thank you for participating in the ISAQC Quantum Challenge! 
+												You can continue watching the game progress.
+											</p>
+										</div>
+									</div>
 								</div>
 							{/if}
 						</div>

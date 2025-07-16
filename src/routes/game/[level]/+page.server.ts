@@ -30,7 +30,7 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	if (event.locals.user.disabled || !event.locals.user.isActive) {
-		throw error(403, { message: 'You have been eliminated from the game' })
+		return redirect(302, '/eliminated')
 	}
 
 	// Check if user already voted
@@ -77,7 +77,7 @@ export const actions: Actions = {
 		}
 
 		if (event.locals.user.disabled || !event.locals.user.isActive) {
-			return fail(403, { message: 'You have been eliminated from the game' })
+			return fail(403, { message: 'You have been eliminated - redirecting...' })
 		}
 
 		// Check if user already voted
