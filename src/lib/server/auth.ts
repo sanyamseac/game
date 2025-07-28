@@ -33,6 +33,7 @@ export type SessionValidationResult = Awaited<ReturnType<typeof validateSessionT
 export function setSessionTokenCookie(event: RequestEvent, token: string) {
 	event.cookies.set(sessionCookieName, token, {
 		expires: new Date(Date.now() + DAY_IN_MS * 30),
+		secure: false,
 		path: '/',
 	})
 }

@@ -55,14 +55,13 @@ export const load: PageServerLoad = async (event) => {
 		.orderBy(desc(table.user.points))
 		.limit(20)
 
-
 	return {
 		currentLevel,
 		totalUsers,
 		votedUsers,
 		remainingPlayers,
 		gameStarted: currentLevel !== null,
-		topPlayers // Add topPlayers to the returned data
+		topPlayers
 	}
 }
 
@@ -85,7 +84,7 @@ export const actions: Actions = {
 		// Create first level
 		await db.insert(table.levels).values({
 			id: 1,
-			answer: null, // Will be set when deciding result
+			answer: null,
 			active: true
 		})
 
@@ -113,12 +112,8 @@ export const actions: Actions = {
 			return fail(400, { message: 'Current level result not decided yet' })
 		}
 
-		// Update points for users from previous level
-		if (currentLevel.answer !== null) {
-			await db.update(table.user)
-				.set({ points: sql`${table.user.points} + 1` })
-				.where(eq(table.user.level, currentLevel.id))
-		}
+		// Note: Points are now awarded automatically when users load the game page
+		// based on their correct votes, so we don't manually award points here
 
 		// Deactivate current level
 		await db
@@ -209,7 +204,7 @@ export const actions: Actions = {
 
 		return {
 			success: true,
-			message: `Result decided: ${resultMessage}! Points will be awarded when next level starts.`
+			message: `Result decided: ${resultMessage}! Points will be awarded automatically to correct voters.`
 		}
 	},
 
@@ -221,12 +216,14 @@ export const actions: Actions = {
 		// Delete all levels
 		await db.delete(table.levels)
 
-		// Reset all users' points and levels
+		// Reset all users' points, levels, votes, and pointsGiven
 		await db
 			.update(table.user)
 			.set({
 				points: 0,
-				level: 0
+				level: 0,
+				lastVote: null,
+				pointsGiven: 0
 			})
 			.where(eq(table.user.role, 'user'))
 

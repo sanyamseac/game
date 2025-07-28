@@ -1,4 +1,3 @@
-import { boolean } from 'drizzle-orm/gel-core'
 import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
 
 export const user = sqliteTable('user', {
@@ -8,7 +7,9 @@ export const user = sqliteTable('user', {
 	points: integer('points').notNull().default(0),
 	role: text('role').notNull().default('user'),
 	session: text('session').notNull(),
-	level: integer('level').notNull().default(0),
+	level: integer('level').notNull().default(0), // Last level user voted on
+	lastVote: integer('last_vote', { mode: 'boolean' }), // Store user's last vote (true=alive, false=dead, null=no vote)
+	pointsGiven: integer('points_given').notNull().default(0), // Track up to which level points have been awarded
 })
 
 export const levels = sqliteTable('levels', {
