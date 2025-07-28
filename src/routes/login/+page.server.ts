@@ -11,22 +11,7 @@ export const load: PageServerLoad = async (event) => {
 		return redirect(302, '/game')
 	}
 
-	// Check if registration is allowed
-	const gameDetailsResult = await db.select().from(table.details)
-	const gameDetails = gameDetailsResult[0]
-	
-	// If no game details exist, return default values
-	if (!gameDetails) {
-		return {
-			allowRegistration: false,
-			needsInitialization: true
-		}
-	}
-	
-	return {
-		allowRegistration: gameDetails.allowReg,
-		needsInitialization: false
-	}
+	return {}
 }
 
 export const actions: Actions = {
@@ -42,12 +27,7 @@ export const actions: Actions = {
 			return fail(400, { message: 'Invalid name or email' })
 		}
 
-		const [details] = await db.select().from(table.details)
-
-		if (!details.allowReg) return fail(400, { message: 'Registration is not available' })
-
 		const sessionId = auth.generateSessionToken()
-		auth.setSessionTokenCookie(event, sessionId)
 
 		const userId = generateId()
 		const store = await auth.createSession(sessionId, userId)
@@ -59,6 +39,8 @@ export const actions: Actions = {
 			session: store,
 		})
 
-		return { success: true }
+		auth.setSessionTokenCookie(event, sessionId)
+
+		return redirect(302, '/game')
 	},
 }

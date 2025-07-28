@@ -1,47 +1,21 @@
+import { boolean } from 'drizzle-orm/gel-core'
 import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
 
 export const user = sqliteTable('user', {
 	id: text('id').primaryKey(),
 	email: text('email').notNull().unique(),
 	name: text('name').notNull(),
-	level: integer('level').notNull().default(1),
+	points: integer('points').notNull().default(0),
 	role: text('role').notNull().default('user'),
 	session: text('session').notNull(),
-	disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
-	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+	level: integer('level').notNull().default(0),
 })
 
 export const levels = sqliteTable('levels', {
-	id: text('id').primaryKey(),
-	level: integer('level').notNull().unique(),
-	correct: text('correct'), // Will be set randomly after voting ends
-	allowAns: integer('allow_ans', { mode: 'boolean' }).notNull().default(true),
-	votingEnded: integer('voting_ended', { mode: 'boolean' }).notNull().default(false),
-	resultsRevealed: integer('results_revealed', { mode: 'boolean' }).notNull().default(false),
-	timerActive: integer('timer_active', { mode: 'boolean' }).notNull().default(false),
-	timerEndTime: integer('timer_end_time'), // Unix timestamp when timer ends
-	timerDuration: integer('timer_duration').notNull().default(10), // Timer duration in seconds
-})
-
-export const votes = sqliteTable('votes', {
-	id: text('id').primaryKey(),
-	userId: text('user_id').notNull().references(() => user.id),
-	level: integer('level').notNull().references(() => levels.level),
-	answer: text('answer').notNull(), // 'alive' or 'dead'
-	timestamp: integer('timestamp').notNull(),
-})
-
-export const details = sqliteTable('details', {
-	id: text('id').primaryKey(),
-	allowReg: integer('allow_reg', { mode: 'boolean' }).notNull().default(true),
-	currentLevel: integer('current_level')
-		.notNull()
-		.default(1)
-		.references(() => levels.level),
-	gameStarted: integer('game_started', { mode: 'boolean' }).notNull().default(false),
+	id: integer('id').primaryKey(),
+	answer: integer('answer', { mode: 'boolean' }),
+	active: integer('active', { mode: 'boolean' }).notNull().default(true),
 })
 
 export type User = typeof user.$inferSelect
-export type Details = typeof details.$inferSelect
 export type Level = typeof levels.$inferSelect
-export type Vote = typeof votes.$inferSelect
