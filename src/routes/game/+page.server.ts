@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit'
 import { db } from '$lib/server/db'
 import * as table from '$lib/server/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, and, sql, desc } from 'drizzle-orm'
 import { fail } from '@sveltejs/kit'
 
 export const load = async (event) => {
@@ -10,14 +10,31 @@ export const load = async (event) => {
 	const level = await db
 		.select()
 		.from(table.levels)
-		.orderBy(table.levels.id)
+		.orderBy(desc(table.levels.id))
 		.limit(1)
 	
-	if (!level || level.length === 0) return {level : null}
+	if (!level || level.length === 0) {
+        return {
+            level: null,
+            hasVoted: false,
+            levelActive: false,
+            userLevel: event.locals.user.level,
+            userPoints: event.locals.user.points // Added userPoints
+        }
+    }
 
-	if (level[0].active === false) return { level: -1 }
+	const currentLevel = level[0]
 
-	return { level: level[0].id }
+	// Check if user already voted: user.level >= currentLevel.id means they voted
+	const hasVoted = event.locals.user.level >= currentLevel.id
+
+	return { 
+		level: currentLevel.id,
+		hasVoted: hasVoted,
+		levelActive: currentLevel.active,
+		userLevel: event.locals.user.level,
+		userPoints: event.locals.user.points // Added userPoints
+	}
 }
 
 export const actions = {
@@ -29,26 +46,29 @@ export const actions = {
 		if (typeof answer !== 'string' || !['1', '0'].includes(answer))
 			return fail(400, { message: 'Invalid answer' })
 
-		const level = await db.select().from(table.levels).orderBy(table.levels.id).limit(1).then(rows => rows[0])
-		if (!level) return fail(404, { message: 'Level not found' })
+		// Get current level
+		const level = await db
+			.select()
+			.from(table.levels)
+			.orderBy(desc(table.levels.id))
+			.limit(1)
+			.then(rows => rows[0])
 
-		if(event.locals.user.level === level) return fail(400, { message: 'You have already voted on this level' })	
+		if (!level) return fail(404, { message: 'No active level found' })
 
-		if (answer === level.answer?.toString()) {
-			await db.update(table.user)
-				.set({ 
-					points: sql`${table.user.points} + 1`, 
-					level: level.id 
-				})
-				.where(eq(table.user.id, event.locals.user.id))
-		} else {
-			await db.update(table.user)
-				.set({  
-					level: level.id 
-				})
-				.where(eq(table.user.id, event.locals.user.id))
+		if (!level.active) {
+			return fail(400, { message: 'Voting is closed for this level' })
 		}
 
-		return { success: true }
+		// Check if user already voted: user.level >= level.id means they voted
+		if (event.locals.user.level >= level.id) {
+			return fail(400, { message: 'You have already voted on this level' })
+		}
+
+		await db.update(table.user)
+			.set({ level: level.id })
+			.where(eq(table.user.id, event.locals.user.id))
+
+		return { success: true, message: 'Vote recorded successfully!' }
 	},
 }
